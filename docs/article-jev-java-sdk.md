@@ -1,6 +1,6 @@
 ---
 title: "I Built the First Java SDK for Jev, TypeSafe's System One Model"
-published: false
+published: true
 description: "Jev has official SDKs for Python and JavaScript only. Here is how I built and published the missing JVM client, with live test numbers from the real API."
 tags: java, spring, ai, opensource
 canonical_url: https://github.com/jamilxt/typesafe-ai-java
