@@ -4,13 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ai.typesafe</groupId>
+    <groupId>com.jamilxt</groupId>
     <artifactId>typesafe-ai-java</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>typesafe-ai-java</name>
     <description>Community Java SDK for the TypeSafe AI System One (Jev) API</description>
+    <url>https://github.com/jamilxt/typesafe-ai-java</url>
 
     <modules>
         <module>typesafe-ai-java-core</module>
@@ -18,13 +19,35 @@
         <module>typesafe-ai-java-spring-ai</module>
     </modules>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>jamilxt</id>
+            <name>Jamilur Rahman</name>
+            <url>https://github.com/jamilxt</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/jamilxt/typesafe-ai-java.git</connection>
+        <developerConnection>scm:git:ssh://github.com/jamilxt/typesafe-ai-java.git</developerConnection>
+        <url>https://github.com/jamilxt/typesafe-ai-java</url>
+    </scm>
+
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>2.17.1</jackson.version>
         <junit.version>5.10.2</junit.version>
         <spring.boot.version>3.3.2</spring.boot.version>
-        <spring.ai.version>1.0.0-M1</spring.ai.version>
+        <spring.ai.version>1.0.0</spring.ai.version>
     </properties>
 
     <build>
@@ -35,6 +58,63 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>17</release>
+                </configuration>
+            </plugin>
+            <!-- Central requirements: sources + javadoc jars -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- GPG signing; activated only when a signing key is present -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals><goal>sign</goal></goals>
+                        <configuration>
+                            <!-- ASCII-armored secret key + passphrase come from env in CI -->
+                            <useAgent>false</useAgent>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Sonatype Central Portal publishing -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.8.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                    <excludeTestArtifacts>true</excludeTestArtifacts>
                 </configuration>
             </plugin>
         </plugins>
@@ -54,7 +134,7 @@
                 <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
                 <type>pom</type>
- <scope>import</scope>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
