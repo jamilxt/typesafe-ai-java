@@ -15,6 +15,7 @@
 
     <modules>
         <module>typesafe-ai-java-core</module>
+        <module>typesafe-ai-java-kotlin</module>
         <module>typesafe-ai-java-spring-boot-starter</module>
         <module>typesafe-ai-java-spring-ai</module>
     </modules>

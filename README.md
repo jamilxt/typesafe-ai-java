@@ -11,6 +11,7 @@ Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-pyt
 | Artifact (groupId `com.jamilxt`) | Purpose | Dependencies |
 |---|---|---|
 | `typesafe-ai-java-core` | Client, typed questions/answers, retries, error hierarchy | Jackson only |
+| `typesafe-ai-java-kotlin` | Idiomatic Kotlin DSL for requests, nullable accessors, confidence helpers | Kotlin stdlib |
 | `typesafe-ai-java-spring-boot-starter` | Auto-configured `TypeSafeClient` bean via `typesafe.*` properties | Spring Boot |
 | `typesafe-ai-java-spring-ai` | Use Jev as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
 
@@ -51,6 +52,26 @@ ChoiceAnswer dept = result.choice("department");
 if (dept.confidenceOrZero() < 0.5) { /* route to a human instead */ }
 
 double frustration = result.score("frustration").score(); // can land between levels
+```
+
+### Kotlin
+
+```kotlin
+val result = client.evaluate("Help! My payouts have been failing for 3 days.") {
+    noul("is_urgent", "Does this convey urgency?")
+    choice("department", "Which team should handle this?") {
+        "billing" to "Payments, invoicing, refunds"
+        "technical" to "Bugs, outages, integrations"
+    }
+    score("frustration", "How frustrated is the customer?") {
+        level("Calm"); level("Frustrated"); level("Very angry")
+    }
+}
+
+if (result.isYes("is_urgent", threshold = 0.7)) escalate()
+result.onConfidentChoice("department", minConfidence = 0.5) { dept ->
+    route(dept.choice)
+}
 ```
 
 Behavior mirrors the official SDKs: retries on 408/429/5xx (2 attempts, 0.5s to 5s backoff with jitter, honors `Retry-After`), a 30s total budget per call, and a typed exception hierarchy (`TypeSafeAuthenticationException`, `TypeSafeRateLimitException` with `retryAfterMs()`, ...).
@@ -130,12 +151,12 @@ Live smoke tests against the real API run automatically when `AI_GATEWAY_API_KEY
 ## Status
 
 - [x] Core client: evaluate, listModels, retries, typed errors
+- [x] Kotlin DSL extensions
 - [x] Spring Boot starter with context tests
 - [x] Spring AI bridge: guard advisor + ChatModel adapter
 - [x] Live-tested against the real Jev API (via Vercel AI Gateway)
 - [x] Published to Maven Central (`0.1.0`)
-- [ ] Kotlin extensions
-- [ ] Release CI (GitHub Actions with publish-on-tag)
+- [x] CI (GitHub Actions) + release-on-tag publishing
 
 ## License
 

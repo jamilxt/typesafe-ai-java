@@ -1,0 +1,61 @@
+name: Release
+
+# Publishing a tag v* builds, signs, and deploys to Maven Central,
+# then creates a GitHub release with the module jars attached.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '21'
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Configure Maven Central credentials
+        run: |
+          mkdir -p ~/.m2
+          printf '%s\n' \
+            '<settings>' \
+            '  <servers>' \
+            '    <server>' \
+            '      <id>central</id>' \
+            '      <username>${{ secrets.CENTRAL_USERNAME }}</username>' \
+            '      <password>${{ secrets.CENTRAL_TOKEN }}</password>' \
+            '    </server>' \
+            '  </servers>' \
+            '</settings>' > ~/.m2/settings.xml
+
+      - name: Deploy to Maven Central
+        run: mvn -B -DskipTests deploy
+
+      - name: Create GitHub release with jars
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            typesafe-ai-java-core/target/typesafe-ai-java-core-*.jar
+            typesafe-ai-java-spring-boot-starter/target/typesafe-ai-java-spring-boot-starter-*.jar
+            typesafe-ai-java-spring-ai/target/typesafe-ai-java-spring-ai-*.jar
+            typesafe-ai-java-kotlin/target/typesafe-ai-java-kotlin-*.jar
