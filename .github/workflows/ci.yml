@@ -24,12 +24,9 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
 
-      - name: Run unit tests
+      # Live smoke tests (Live*IT) skip themselves via JUnit assumeTrue when
+      # AI_GATEWAY_API_KEY is absent, so this is safe without the secret.
+      - name: Run tests (unit + live smoke when key configured)
         run: mvn -B test
-
-      # Live smoke tests run only when the gateway key secret is configured.
-      - name: Run live smoke tests
-        if: ${{ secrets.AI_GATEWAY_API_KEY != '' }}
-        run: mvn -B test -Dtest='Live*IT' -Dsurefire.failIfNoSpecifiedTests=false
         env:
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
