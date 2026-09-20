@@ -4,7 +4,7 @@ Community-maintained Java SDK for the [TypeSafe AI System One (Jev) API](https:/
 
 Jev answers typed questions about a piece of state. Ask whether something is true and you get a probability. Ask it to pick from a list and you get the option plus a distribution over the alternatives. It does not write prose, so nothing here parses sentences. The answers arrive as numbers your code branches on.
 
-Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-python) and [JavaScript](https://github.com/typesafe-ai/typesafe-sdk-js). This is the JVM counterpart: a pure-Java core, a Spring Boot starter, and an optional Spring AI bridge.
+Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-python) and [JavaScript](https://github.com/typesafe-ai/typesafe-sdk-js). This is the JVM counterpart: a pure-Java core, idiomatic Kotlin extensions, a Spring Boot starter, and an optional Spring AI bridge.
 
 ## Modules
 
@@ -15,7 +15,7 @@ Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-pyt
 | `typesafe-ai-java-spring-boot-starter` | Auto-configured `TypeSafeClient` bean via `typesafe.*` properties | Spring Boot |
 | `typesafe-ai-java-spring-ai` | Use Jev as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
 
-All three are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt):
+All four are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt). Latest release: **0.1.1** ([release notes](https://github.com/jamilxt/typesafe-ai-java/releases)).
 
 ```xml
 <dependency>
@@ -55,6 +55,8 @@ double frustration = result.score("frustration").score(); // can land between le
 ```
 
 ### Kotlin
+
+Add `typesafe-ai-java-kotlin` (same coordinates pattern as core), then:
 
 ```kotlin
 val result = client.evaluate("Help! My payouts have been failing for 3 days.") {
@@ -155,7 +157,7 @@ Live smoke tests against the real API run automatically when `AI_GATEWAY_API_KEY
 - [x] Spring Boot starter with context tests
 - [x] Spring AI bridge: guard advisor + ChatModel adapter
 - [x] Live-tested against the real Jev API (via Vercel AI Gateway)
-- [x] Published to Maven Central (`0.1.0`)
+- [x] Published to Maven Central (`0.1.1`, all four modules)
 - [x] CI (GitHub Actions) + release-on-tag publishing
 
 ## License

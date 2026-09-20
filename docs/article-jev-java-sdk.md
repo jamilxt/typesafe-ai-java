@@ -136,12 +136,13 @@ Two details worth noticing in the triage result. The model routed a payout compl
 
 ## Publishing lessons
 
-The SDK is on Maven Central under `com.jamilxt:typesafe-ai-java-core:0.1.0` (plus the starter and bridge artifacts). Getting there involved the usual Central Portal gauntlet: namespace verification via DNS TXT record, PGP signing with the key published to the keyservers, sources and javadoc jars attached.
+The SDK is on Maven Central under `com.jamilxt:typesafe-ai-java-core:0.1.1` (plus the Kotlin, starter, and bridge artifacts). Getting there involved the usual Central Portal gauntlet: namespace verification via DNS TXT record, PGP signing with the key published to the keyservers, sources and javadoc jars attached.
 
-Two things cost me time and might save you some:
+Three things cost me time and might save you some:
 
 1. The Central Portal's namespace checker can sit in "pending" for a while even after your TXT record propagates globally. Dig shows the record, the portal does not care, yet. It catches up on its own schedule.
 2. keys.openpgp.org requires email verification before it serves your key. If Sonatype's validator reports "could not find a public key" for a key you just uploaded, that is usually why. The fix is clicking the verification link the keyserver emails you.
+3. Central requires a javadoc jar for every published artifact, including Kotlin-only modules where the javadoc tool has nothing to process. The accepted workaround is attaching an empty classified jar. The build now handles this, and releases publish from a git tag via GitHub Actions with no manual steps.
 
 ## What I would use this for
 
@@ -159,7 +160,7 @@ https://github.com/jamilxt/typesafe-ai-java
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-core</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
