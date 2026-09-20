@@ -21,7 +21,7 @@ All three are published to [Maven Central](https://central.sonatype.com/namespac
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-core</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
@@ -100,7 +100,7 @@ TypeSafeClient client = TypeSafeClient.builder(key)
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-spring-boot-starter</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
