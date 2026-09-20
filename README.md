@@ -8,15 +8,27 @@ Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-pyt
 
 ## Modules
 
-| Module | Purpose | Dependencies |
+| Artifact (groupId `com.jamilxt`) | Purpose | Dependencies |
 |---|---|---|
 | `typesafe-ai-java-core` | Client, typed questions/answers, retries, error hierarchy | Jackson only |
 | `typesafe-ai-java-spring-boot-starter` | Auto-configured `TypeSafeClient` bean via `typesafe.*` properties | Spring Boot |
 | `typesafe-ai-java-spring-ai` | Use Jev as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
 
+All three are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt):
+
+```xml
+<dependency>
+  <groupId>com.jamilxt</groupId>
+  <artifactId>typesafe-ai-java-core</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+Requires Java 17+.
+
 ## Quick start (core)
 
-Requires Java 17+. Set `TYPESAFE_API_KEY` (early access is waitlisted; keys are also available through gateways).
+Set `TYPESAFE_API_KEY` (early access is waitlisted; keys are also available through the Vercel AI Gateway or OpenRouter).
 
 ```java
 TypeSafeClient client = TypeSafeClient.fromEnv();
@@ -38,17 +50,25 @@ if (result.noul("is_urgent").isYes(0.7)) { /* escalate */ }
 ChoiceAnswer dept = result.choice("department");
 if (dept.confidenceOrZero() < 0.5) { /* route to a human instead */ }
 
-double frustration = result.score("frustration").score(); // 0.0 - 2.0, can land between levels
+double frustration = result.score("frustration").score(); // can land between levels
 ```
 
 Behavior mirrors the official SDKs: retries on 408/429/5xx (2 attempts, 0.5s to 5s backoff with jitter, honors `Retry-After`), a 30s total budget per call, and a typed exception hierarchy (`TypeSafeAuthenticationException`, `TypeSafeRateLimitException` with `retryAfterMs()`, ...).
+
+### Through the Vercel AI Gateway
+
+```java
+TypeSafeClient client = TypeSafeClient.builder(gatewayKey)
+    .baseUrl("https://ai-gateway.vercel.sh/typesafe")
+    .defaultModel("typesafe-ai/jev")
+    .build();
+```
 
 ### Bring your own transport
 
 ```java
 TypeSafeClient client = TypeSafeClient.builder(key)
-    .baseUrl("https://your-gateway.example.com")  // e.g. a proxy or recorded endpoint
-    .transport(yourTransport)                      // implements ai.typesafe.http.Transport
+    .transport(yourTransport)   // implements ai.typesafe.http.Transport
     .retryPolicy(RetryPolicy.defaults().toBuilder().maxRetries(4).build())
     .build();
 ```
@@ -57,9 +77,9 @@ TypeSafeClient client = TypeSafeClient.builder(key)
 
 ```xml
 <dependency>
-  <groupId>ai.typesafe</groupId>
+  <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-spring-boot-starter</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
@@ -105,14 +125,17 @@ ChatClient chatClient = ChatClient.builder(otherChatModel)
 mvn clean test
 ```
 
+Live smoke tests against the real API run automatically when `AI_GATEWAY_API_KEY` is set and are skipped otherwise.
+
 ## Status
 
 - [x] Core client: evaluate, listModels, retries, typed errors
 - [x] Spring Boot starter with context tests
 - [x] Spring AI bridge: guard advisor + ChatModel adapter
-- [ ] Maven Central publication (Sonatype)
+- [x] Live-tested against the real Jev API (via Vercel AI Gateway)
+- [x] Published to Maven Central (`0.1.0`)
 - [ ] Kotlin extensions
-- [ ] Live API smoke tests (blocked on early-access key)
+- [ ] Release CI (GitHub Actions with publish-on-tag)
 
 ## License
 
