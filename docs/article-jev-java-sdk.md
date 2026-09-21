@@ -136,7 +136,7 @@ Two details worth noticing in the triage result. The model routed a payout compl
 
 ## Publishing lessons
 
-The SDK is on Maven Central under `com.jamilxt:typesafe-ai-java-core:0.1.1` (plus the Kotlin, starter, and bridge artifacts). Getting there involved the usual Central Portal gauntlet: namespace verification via DNS TXT record, PGP signing with the key published to the keyservers, sources and javadoc jars attached.
+The SDK is on Maven Central under `com.jamilxt:typesafe-ai-java-core:0.1.2` (plus the Kotlin, starter, and bridge artifacts). Getting there involved the usual Central Portal gauntlet: namespace verification via DNS TXT record, PGP signing with the key published to the keyservers, sources and javadoc jars attached.
 
 Three things cost me time and might save you some:
 
@@ -160,7 +160,7 @@ https://github.com/jamilxt/typesafe-ai-java
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-core</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
 </dependency>
 ```
 

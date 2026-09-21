@@ -21,17 +21,23 @@ import java.util.Objects;
  *
  * <p>When the screening noul probability is at or above {@code blockThreshold},
  * the chain is short-circuited and the assistant receives no request; the
- * response carries the reason. Between {@code reviewThreshold} and
- * {@code blockThreshold} the request proceeds but is flagged in
- * {@link #lastVerdict()} for logging.</p>
+ * exception carries the reason. Between {@code reviewThreshold} and
+ * {@code blockThreshold} the request proceeds; the verdict is attached to the
+ * request and response context under {@link #VERDICT_CONTEXT_KEY} for logging.</p>
  */
 public final class JevPromptGuardAdvisor implements CallAdvisor {
+
+    /** Context key under which the screening {@link Verdict} is attached to the request context. */
+    public static final String VERDICT_CONTEXT_KEY = "jev_guard_verdict";
 
     private final TypeSafeClient client;
     private final String instructions;
     private final double blockThreshold;
     private final double reviewThreshold;
-    private volatile Verdict lastVerdict;
+
+    /** @deprecated racy instance-level holder; retained only for the deprecated {@link #lastVerdict()} accessor. */
+    @Deprecated
+    private volatile Verdict lastVerdictHolder;
 
     /**
      * @param instructions    the screening question, e.g. "Does this message
@@ -56,8 +62,18 @@ public final class JevPromptGuardAdvisor implements CallAdvisor {
 
     public enum Action { ALLOW, REVIEW, BLOCK }
 
+    /**
+     * The verdict of the most recent screening: probability and action.
+     *
+     * @deprecated prefer reading {@link #VERDICT_CONTEXT_KEY} from the
+     *     {@link ChatClientResponse} context:
+     *     {@code response.context().get(JevPromptGuardAdvisor.VERDICT_CONTEXT_KEY)}.
+     *     This instance-level accessor races under concurrent calls and will be
+     *     removed in a future release.
+     */
+    @Deprecated
     public Verdict lastVerdict() {
-        return lastVerdict;
+        return lastVerdictHolder;
     }
 
     @Override
@@ -73,12 +89,19 @@ public final class JevPromptGuardAdvisor implements CallAdvisor {
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
         Verdict verdict = screen(request);
-        this.lastVerdict = verdict;
+        this.lastVerdictHolder = verdict; // deprecated racy accessor; context is the supported path
+        ChatClientRequest flagged = request.mutate()
+                .context(VERDICT_CONTEXT_KEY, verdict)
+                .build();
         if (verdict.action() == Action.BLOCK) {
             throw new ai.typesafe.exception.TypeSafeException(
                     "JevPromptGuard blocked the request (probability=" + verdict.probability() + "): " + verdict.reason());
         }
-        return chain.nextCall(request);
+        ChatClientResponse response = chain.nextCall(flagged);
+        if (response != null) {
+            return response.mutate().context(VERDICT_CONTEXT_KEY, verdict).build();
+        }
+        return response;
     }
 
     private Verdict screen(ChatClientRequest request) {

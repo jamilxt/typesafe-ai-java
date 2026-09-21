@@ -16,6 +16,8 @@ import java.util.Map;
  */
 public final class JdkTransport implements Transport {
 
+    private static final String USER_AGENT = "typesafe-ai-java/" + SdkVersion.version();
+
     private final HttpClient client;
 
     public JdkTransport() {
@@ -36,7 +38,7 @@ public final class JdkTransport implements Transport {
                 .timeout(Duration.ofMillis((long) (timeoutSeconds * 1000.0)))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .header("User-Agent", "typesafe-ai-java/0.1.0")
+                .header("User-Agent", USER_AGENT)
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
         try {

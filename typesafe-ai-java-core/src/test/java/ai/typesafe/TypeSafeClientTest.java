@@ -135,6 +135,70 @@ class TypeSafeClientTest {
     }
 
     @Test
+    void listModelsRetriesOn429ThenSucceeds() {
+        AtomicInteger calls = new AtomicInteger();
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            assertTrue(url.endsWith("/v1/models"), "listModels should hit /v1/models: " + url);
+            if (calls.get() == 1) {
+                return new Transport.Response(429, Map.of("retry-after-ms", "1"), "{\"error\":\"rate limited\"}");
+            }
+            return new Transport.Response(200, Map.of(), "{\"models\":[\"jev-latest\",\"jev-1.13.0\"]}");
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("test-key")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.defaults().toBuilder()
+                        .backoffInitial(java.time.Duration.ofMillis(1)).build())
+                .build();
+
+        String body = client.listModels();
+        assertEquals(2, calls.get());
+        assertTrue(body.contains("jev-1.13.0"));
+    }
+
+    @Test
+    void listModelsDoesNotRetryOn401() {
+        AtomicInteger calls = new AtomicInteger();
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            return new Transport.Response(401, Map.of(), "{\"error\":\"bad key\"}");
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("test-key")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.defaults().toBuilder()
+                        .backoffInitial(java.time.Duration.ofMillis(1)).build())
+                .build();
+
+        assertThrows(ai.typesafe.exception.TypeSafeAuthenticationException.class, client::listModels);
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void malformedRetryAfterMsDoesNotCrashRetryLoop() {
+        AtomicInteger calls = new AtomicInteger();
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            if (calls.get() == 1) {
+                // Malformed ms header must be ignored (fall back to seconds header / backoff), not throw NFE
+                return new Transport.Response(429, Map.of("retry-after-ms", "soon"), "{\"error\":\"rate limited\"}");
+            }
+            return new Transport.Response(200, Map.of(), OK_BODY);
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("test-key")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.defaults().toBuilder()
+                        .backoffInitial(java.time.Duration.ofMillis(1)).build())
+                .build();
+
+        SystemOneResult result = client.evaluate(smallRequest());
+        assertEquals(2, calls.get());
+        assertNotNull(result);
+    }
+
+    @Test
     void requestBuilderRejectsEmptyQuestions() {
         assertThrows(IllegalArgumentException.class,
                 () -> ai.typesafe.model.EvaluationRequest.of("state").build());

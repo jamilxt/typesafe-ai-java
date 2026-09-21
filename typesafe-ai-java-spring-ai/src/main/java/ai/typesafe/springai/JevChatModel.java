@@ -10,6 +10,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -30,21 +31,36 @@ import java.util.stream.Collectors;
  * messages are concatenated (newline-joined) and sent as the instructions of
  * a single noul question named {@code decision}. The winning probability is
  * rendered as text (the probability formatted to four decimals) in a single
- * Generation, and the full typed result is available via {@link #lastResult()}
- * for code that needs probabilities and confidence.</p>
+ * Generation, and the full typed result is attached to the response metadata
+ * under {@link #RESULT_METADATA_KEY} for code that needs probabilities and
+ * confidence.</p>
  */
 public final class JevChatModel implements ChatModel {
 
+    /** Metadata key under which the raw {@link SystemOneResult} is attached to every {@link ChatResponse}. */
+    public static final String RESULT_METADATA_KEY = "jev_result";
+
     private final TypeSafeClient client;
-    private volatile SystemOneResult lastResult;
+
+    /** @deprecated racy instance-level holder; retained only for the deprecated {@link #lastResult()} accessor. */
+    @Deprecated
+    private volatile SystemOneResult lastResultHolder;
 
     public JevChatModel(TypeSafeClient client) {
         this.client = Objects.requireNonNull(client, "client");
     }
 
-    /** The raw result of the most recent call, for probability-level access. */
+    /**
+     * The raw result of the most recent call, for probability-level access.
+     *
+     * @deprecated prefer reading {@link #RESULT_METADATA_KEY} from the
+     *     {@link ChatResponse} metadata: {@code response.getMetadata().get(JevChatModel.RESULT_METADATA_KEY)}.
+     *     This instance-level accessor races under concurrent calls and will be
+     *     removed in a future release.
+     */
+    @Deprecated
     public Optional<SystemOneResult> lastResult() {
-        return Optional.ofNullable(lastResult);
+        return lastResultHolder == null ? Optional.empty() : Optional.of(lastResultHolder);
     }
 
     @Override
@@ -68,10 +84,13 @@ public final class JevChatModel implements ChatModel {
         }
 
         SystemOneResult result = client.evaluate(builder.build());
-        this.lastResult = result;
+        this.lastResultHolder = result;
         double probability = result.noul("decision").noul();
         String text = String.format("%.4f", probability);
-        return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
+        ChatResponseMetadata metadata = ChatResponseMetadata.builder()
+                .keyValue(RESULT_METADATA_KEY, result)
+                .build();
+        return new ChatResponse(List.of(new Generation(new AssistantMessage(text))), metadata);
     }
 
     @Override

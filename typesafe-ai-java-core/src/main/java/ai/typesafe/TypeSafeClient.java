@@ -101,10 +101,19 @@ public final class TypeSafeClient {
      * Exposed as raw JSON for forward compatibility.
      */
     public String listModels() {
-        return transport.postJson(baseUrl + MODELS_PATH, apiKey, "{}", timeoutSeconds).body();
+        return executeWithRetries(MODELS_PATH, "{}", response -> {
+            if (response.status() >= 400) {
+                throw apiException(response.status(), response.body(), response.headers());
+            }
+            return response.body();
+        });
     }
 
     private SystemOneResult executeWithRetries(String body) {
+        return executeWithRetries(EVALUATE_PATH, body, this::handleResponse);
+    }
+
+    private <T> T executeWithRetries(String path, String body, java.util.function.Function<Transport.Response, T> parse) {
         long deadline = retryPolicy.totalBudgetSeconds() == null
                 ? Long.MAX_VALUE
                 : System.nanoTime() + (long) (retryPolicy.totalBudgetSeconds() * 1_000_000_000L);
@@ -113,8 +122,8 @@ public final class TypeSafeClient {
             attempt++;
             try {
                 Transport.Response response =
-                        transport.postJson(baseUrl + EVALUATE_PATH, apiKey, body, timeoutSeconds);
-                return handleResponse(response);
+                        transport.postJson(baseUrl + path, apiKey, body, timeoutSeconds);
+                return parse.apply(response);
             } catch (TypeSafeAPIConnectionException | TypeSafeAPIException e) {
                 Long retryAfterMs = null;
                 if (e instanceof TypeSafeAPIException api) {
@@ -122,9 +131,8 @@ public final class TypeSafeClient {
                         throw e;
                     }
                     String msHeader = api.headers().get("retry-after-ms");
-                    if (msHeader != null) {
-                        retryAfterMs = Long.parseLong(msHeader.trim());
-                    } else {
+                    retryAfterMs = parseMillis(msHeader);
+                    if (retryAfterMs == null) {
                         retryAfterMs = parseSeconds(api.headers().get("retry-after"));
                     }
                 } else {
@@ -160,6 +168,18 @@ public final class TypeSafeClient {
         }
     }
 
+    /** Parses a {@code retry-after-ms} header; returns null when absent or malformed. */
+    private static Long parseMillis(String v) {
+        if (v == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(v.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private long computeBackoffMs(int attempt, Long retryAfterMs) {
         if (retryPolicy.respectRetryAfter() && retryAfterMs != null) {
             return retryAfterMs;
@@ -187,20 +207,22 @@ public final class TypeSafeClient {
         if (status >= 200 && status < 300) {
             return Json.parseResult(response.body());
         }
-        Map<String, String> headers = response.headers();
-        String body = response.body();
+        throw apiException(status, response.body(), response.headers());
+    }
+
+    private static TypeSafeAPIException apiException(int status, String body, Map<String, String> headers) {
         switch (status) {
-            case 400: throw new TypeSafeBadRequestException(body, headers);
-            case 401: throw new TypeSafeAuthenticationException(body, headers);
-            case 403: throw new TypeSafePermissionDeniedException(body, headers);
-            case 404: throw new TypeSafeNotFoundException(body, headers);
-            case 422: throw new TypeSafeUnprocessableEntityException(body, headers);
-            case 429: throw new TypeSafeRateLimitException(body, headers);
+            case 400: return new TypeSafeBadRequestException(body, headers);
+            case 401: return new TypeSafeAuthenticationException(body, headers);
+            case 403: return new TypeSafePermissionDeniedException(body, headers);
+            case 404: return new TypeSafeNotFoundException(body, headers);
+            case 422: return new TypeSafeUnprocessableEntityException(body, headers);
+            case 429: return new TypeSafeRateLimitException(body, headers);
             default:
                 if (status >= 500) {
-                    throw new TypeSafeInternalServerException(status, body, headers);
+                    return new TypeSafeInternalServerException(status, body, headers);
                 }
-                throw new TypeSafeAPIException(status, body, headers);
+                return new TypeSafeAPIException(status, body, headers);
         }
     }
 
