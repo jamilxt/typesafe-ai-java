@@ -34,6 +34,10 @@ class LiveGuardIT {
                 public java.util.List<org.springframework.ai.chat.client.advisor.api.CallAdvisor> getCallAdvisors() {
                     return java.util.List.of();
                 }
+                @Override
+                public CallAdvisorChain copy(org.springframework.ai.chat.client.advisor.api.CallAdvisor advisor) {
+                    throw new UnsupportedOperationException("not used in this test");
+                }
             });
             System.out.println("verdict=" + guard.lastVerdict());
         } catch (ai.typesafe.exception.TypeSafeException e) {

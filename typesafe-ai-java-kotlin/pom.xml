@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.jamilxt</groupId>
         <artifactId>typesafe-ai-java</artifactId>
-        <version>0.1.2</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>typesafe-ai-java-kotlin</artifactId>
@@ -15,7 +15,7 @@
     <description>Idiomatic Kotlin extensions for the TypeSafe System One (Jev) client</description>
 
     <properties>
-        <kotlin.version>2.0.20</kotlin.version>
+        <kotlin.version>2.4.20</kotlin.version>
     </properties>
 
     <dependencies>

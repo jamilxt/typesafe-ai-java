@@ -6,7 +6,7 @@
 
     <groupId>com.jamilxt</groupId>
     <artifactId>typesafe-ai-java</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.0</version>
     <packaging>pom</packaging>
 
     <name>typesafe-ai-java</name>
@@ -43,12 +43,12 @@
     </scm>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.17.1</jackson.version>
+        <jackson.version>2.22.2</jackson.version>
         <junit.version>5.10.2</junit.version>
-        <spring.boot.version>3.3.2</spring.boot.version>
-        <spring.ai.version>1.0.0</spring.ai.version>
+        <spring.boot.version>4.1.1</spring.boot.version>
+        <spring.ai.version>2.0.1</spring.ai.version>
     </properties>
 
     <build>
@@ -58,7 +58,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <release>17</release>
+                    <release>25</release>
                 </configuration>
             </plugin>
             <!-- Central requirements: sources + javadoc jars -->
