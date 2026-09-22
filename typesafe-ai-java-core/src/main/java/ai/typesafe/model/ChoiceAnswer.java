@@ -3,6 +3,9 @@ package ai.typesafe.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,5 +39,28 @@ public record ChoiceAnswer(
     public double probabilityOf(String option) {
         Double p = probabilities.get(option);
         return p == null ? 0.0 : p;
+    }
+
+    /**
+     * Options whose probability is at least the threshold, most likely first.
+     * Useful for the fan-out pattern: instead of committing to the single top
+     * option, explore every option that is close enough to matter.
+     *
+     * @param threshold the inclusive lower probability bound (e.g. 0.2)
+     * @return the matching option labels, ordered by descending probability
+     */
+    public List<String> optionsAbove(double threshold) {
+        List<Map.Entry<String, Double>> matches = new ArrayList<>();
+        for (Map.Entry<String, Double> e : probabilities.entrySet()) {
+            if (e.getValue() != null && e.getValue() >= threshold) {
+                matches.add(e);
+            }
+        }
+        matches.sort(Map.Entry.<String, Double>comparingByValue(Comparator.reverseOrder()));
+        List<String> labels = new ArrayList<>(matches.size());
+        for (Map.Entry<String, Double> e : matches) {
+            labels.add(e.getKey());
+        }
+        return labels;
     }
 }

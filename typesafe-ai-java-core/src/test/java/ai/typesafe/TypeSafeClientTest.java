@@ -143,7 +143,8 @@ class TypeSafeClientTest {
             if (calls.get() == 1) {
                 return new Transport.Response(429, Map.of("retry-after-ms", "1"), "{\"error\":\"rate limited\"}");
             }
-            return new Transport.Response(200, Map.of(), "{\"models\":[\"jev-latest\",\"jev-1.13.0\"]}");
+            return new Transport.Response(200, Map.of(),
+                    "{\"models\":[\"jev-latest\",{\"id\":\"jev-1.13.0\",\"created\":1758000000}]}");
         };
 
         TypeSafeClient client = TypeSafeClient.builder("test-key")
@@ -152,9 +153,72 @@ class TypeSafeClientTest {
                         .backoffInitial(java.time.Duration.ofMillis(1)).build())
                 .build();
 
-        String body = client.listModels();
+        java.util.List<ai.typesafe.model.ModelInfo> models = client.listModels();
         assertEquals(2, calls.get());
-        assertTrue(body.contains("jev-1.13.0"));
+        assertEquals(2, models.size());
+        assertEquals("jev-latest", models.get(0).id());
+        assertEquals(Map.of(), models.get(0).metadata());
+        assertEquals("jev-1.13.0", models.get(1).id());
+        assertEquals(1758000000, models.get(1).number("created").longValue());
+    }
+
+    @Test
+    void listModelsRawReturnsBody() {
+        AtomicInteger calls = new AtomicInteger();
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            return new Transport.Response(200, Map.of(), "{\"models\":[\"jev-latest\"]}");
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("test-key")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.none())
+                .build();
+
+        String body = client.listModelsRaw();
+        assertEquals(1, calls.get());
+        assertTrue(body.contains("jev-latest"));
+    }
+
+    @Test
+    void rotatedApiKeySupplierIsUsedPerRequest() {
+        AtomicInteger calls = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicReference<String> currentKey =
+                new java.util.concurrent.atomic.AtomicReference<>("key-v1");
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            if (calls.get() == 1) {
+                assertEquals("key-v1", key);
+                return new Transport.Response(401, Map.of(), "{\"error\":\"bad key\"}");
+            }
+            assertEquals("key-v2", key, "second call must pick up the rotated key");
+            return new Transport.Response(200, Map.of(), OK_BODY);
+        };
+
+        // retryPolicy.none() so the 401 surfaces; the point is the key the transport saw
+        TypeSafeClient client = TypeSafeClient.builder(currentKey::get)
+                .transport(transport)
+                .retryPolicy(RetryPolicy.none())
+                .build();
+
+        assertThrows(ai.typesafe.exception.TypeSafeAuthenticationException.class,
+                () -> client.evaluate(smallRequest()));
+        currentKey.set("key-v2");
+        SystemOneResult result = client.evaluate(smallRequest());
+        assertEquals("jev-1.13.0", result.model());
+        assertEquals(2, calls.get());
+    }
+
+    @Test
+    void optionsAboveOrdersByDescendingProbability() {
+        ai.typesafe.model.ChoiceAnswer answer = new ai.typesafe.model.ChoiceAnswer(
+                "choice", "billing",
+                new java.util.LinkedHashMap<>(Map.of(
+                        "billing", 0.55, "technical", 0.40, "sales", 0.05)),
+                0.6);
+        assertEquals(java.util.List.of("billing", "technical"), answer.optionsAbove(0.2));
+        assertEquals(java.util.List.of("billing"), answer.optionsAbove(0.5));
+        assertTrue(answer.optionsAbove(0.9).isEmpty());
     }
 
     @Test

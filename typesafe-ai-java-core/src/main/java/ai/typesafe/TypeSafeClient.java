@@ -53,7 +53,7 @@ public final class TypeSafeClient {
     private static final String EVALUATE_PATH = "/v1/systemone";
     private static final String MODELS_PATH = "/v1/models";
 
-    private final String apiKey;
+    private final java.util.function.Supplier<String> apiKey;
     private final String baseUrl;
     private final String defaultModel;
     private final RetryPolicy retryPolicy;
@@ -87,6 +87,15 @@ public final class TypeSafeClient {
         return new Builder(apiKey);
     }
 
+    /**
+     * Builder whose bearer token is supplied per request, so a rotated key
+     * takes effect without rebuilding the client.
+     */
+    public static Builder builder(java.util.function.Supplier<String> apiKey) {
+        Builder b = new Builder("supplier");
+        return b.apiKey(apiKey);
+    }
+
     /** Evaluates a request, applying the configured retry policy. */
     public SystemOneResult evaluate(EvaluationRequest request) {
         String model = request.model() != null ? request.model() : defaultModel;
@@ -97,10 +106,20 @@ public final class TypeSafeClient {
     }
 
     /**
-     * Lists models available to the account.
-     * Exposed as raw JSON for forward compatibility.
+     * Lists models available to the account, parsed into {@link ModelInfo}
+     * entries (id plus any returned metadata). Lenient on wire shape: plain
+     * string entries become id-only entries.
      */
-    public String listModels() {
+    public java.util.List<ai.typesafe.model.ModelInfo> listModels() {
+        String body = listModelsRaw();
+        return ai.typesafe.model.ModelInfo.parseModels(body);
+    }
+
+    /**
+     * Lists models as the raw JSON body, for forward compatibility.
+     * @see #listModels() for the typed variant
+     */
+    public String listModelsRaw() {
         return executeWithRetries(MODELS_PATH, "{}", response -> {
             if (response.status() >= 400) {
                 throw apiException(response.status(), response.body(), response.headers());
@@ -122,7 +141,7 @@ public final class TypeSafeClient {
             attempt++;
             try {
                 Transport.Response response =
-                        transport.postJson(baseUrl + path, apiKey, body, timeoutSeconds);
+                        transport.postJson(baseUrl + path, apiKey.get(), body, timeoutSeconds);
                 return parse.apply(response);
             } catch (TypeSafeAPIConnectionException | TypeSafeAPIException e) {
                 Long retryAfterMs = null;
@@ -228,7 +247,7 @@ public final class TypeSafeClient {
 
     /** Immutable builder. */
     public static final class Builder {
-        private final String apiKey;
+        private java.util.function.Supplier<String> apiKey;
         private String baseUrl;
         private String defaultModel = MODEL_JEV_LATEST;
         private RetryPolicy retryPolicy = RetryPolicy.defaults();
@@ -239,7 +258,21 @@ public final class TypeSafeClient {
             if (apiKey == null || apiKey.isBlank()) {
                 throw new IllegalArgumentException("apiKey must not be blank");
             }
+            this.apiKey = () -> apiKey;
+        }
+
+        /**
+         * Supplies the bearer token per request, so a rotated key takes effect
+         * without rebuilding the client.
+         * @param apiKey the token supplier
+         * @return this builder
+         */
+        public Builder apiKey(java.util.function.Supplier<String> apiKey) {
+            if (apiKey == null) {
+                throw new IllegalArgumentException("apiKey supplier must not be null");
+            }
             this.apiKey = apiKey;
+            return this;
         }
 
         /** Overrides the endpoint (e.g. a gateway URL). */
