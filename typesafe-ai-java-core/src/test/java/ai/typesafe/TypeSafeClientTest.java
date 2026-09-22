@@ -210,6 +210,35 @@ class TypeSafeClientTest {
     }
 
     @Test
+    void layaFactoryPointsClientAtGivenBaseUrl() {
+        TypeSafeClient client = TypeSafeClient.laya("http://localhost:8000", "local-key");
+        assertEquals("http://localhost:8000", client.baseUrl());
+        assertEquals(TypeSafeClient.MODEL_JEV_LATEST, client.defaultModel());
+    }
+
+    @Test
+    void baseUrlOverrideRoutesRequestsToLocalEndpoint() {
+        AtomicInteger calls = new AtomicInteger();
+        Transport transport = (url, key, body, timeout) -> {
+            calls.incrementAndGet();
+            assertTrue(url.startsWith("http://localhost:8000"), "local base url used: " + url);
+            assertEquals("local-key", key);
+            // laya-serve answers in the same wire shape as the hosted API
+            return new Transport.Response(200, Map.of(), OK_BODY);
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("local-key")
+                .baseUrl("http://localhost:8000/")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.none())
+                .build();
+
+        SystemOneResult result = client.evaluate(smallRequest());
+        assertEquals(1, calls.get());
+        assertEquals("jev-1.13.0", result.model());
+    }
+
+    @Test
     void optionsAboveOrdersByDescendingProbability() {
         ai.typesafe.model.ChoiceAnswer answer = new ai.typesafe.model.ChoiceAnswer(
                 "choice", "billing",

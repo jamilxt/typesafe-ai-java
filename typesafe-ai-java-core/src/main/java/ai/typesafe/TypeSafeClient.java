@@ -47,6 +47,12 @@ public final class TypeSafeClient {
     /** Environment variable read by {@link #fromEnv()}. */
     public static final String API_KEY_ENV = "TYPESAFE_API_KEY";
 
+    /**
+     * Optional environment variable read by {@link #fromEnv()}: overrides the
+     * endpoint, e.g. a self-hosted laya-serve URL. Unset means the hosted API.
+     */
+    public static final String BASE_URL_ENV = "TYPESAFE_BASE_URL";
+
     /** The flagship model alias. */
     public static final String MODEL_JEV_LATEST = "jev-latest";
 
@@ -73,6 +79,21 @@ public final class TypeSafeClient {
         return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
     }
 
+    /**
+     * @return the endpoint root this client posts to: the hosted API unless
+     * overridden, e.g. pointed at a self-hosted laya-serve instance
+     */
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    /**
+     * @return the model applied to requests that do not pin one
+     */
+    public String defaultModel() {
+        return defaultModel;
+    }
+
     /** Client reading the key from {@code TYPESAFE_API_KEY}. */
     public static TypeSafeClient fromEnv() {
         String key = System.getenv(API_KEY_ENV);
@@ -80,7 +101,31 @@ public final class TypeSafeClient {
             throw new IllegalArgumentException(
                     "Environment variable " + API_KEY_ENV + " is not set; pass an api key explicitly instead");
         }
-        return builder(key).build();
+        Builder b = builder(key);
+        String baseUrl = System.getenv(BASE_URL_ENV);
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            b.baseUrl(baseUrl);
+        }
+        return b.build();
+    }
+
+    /**
+     * Client pointed at a self-hosted <a href="https://pypi.org/project/laya-serve/">
+     * laya-serve</a> instance instead of the hosted TypeSafe API. laya-serve speaks
+     * the Jev wire contract ({@code POST /v1/systemone}, {@code GET /v1/models})
+     * and answers from local Laya weights, so every question/answer type of this
+     * SDK works unchanged.
+     *
+     * <pre>{@code
+     * TypeSafeClient client = TypeSafeClient.laya("http://localhost:8000", "local-key");
+     * }</pre>
+     *
+     * @param baseUrl the laya-serve root, e.g. {@code http://localhost:8000}
+     * @param apiKey the bearer token; pass any non-blank string when the server
+     *               runs without {@code LAYA_SERVE_API_KEY}
+     */
+    public static TypeSafeClient laya(String baseUrl, String apiKey) {
+        return builder(apiKey).baseUrl(baseUrl).build();
     }
 
     public static Builder builder(String apiKey) {

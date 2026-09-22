@@ -96,6 +96,27 @@ TypeSafeClient client = TypeSafeClient.builder(key)
     .build();
 ```
 
+### Self-hosted Laya (laya-serve)
+
+[laya-serve](https://pypi.org/project/laya-serve/) runs Laya decision-model weights
+locally and speaks the same Jev wire contract (`POST /v1/systemone`,
+`GET /v1/models`), so the whole SDK works against it unchanged:
+
+```java
+TypeSafeClient client = TypeSafeClient.laya("http://localhost:8000", "local-key");
+```
+
+Or switch hosted vs self-hosted with an environment variable and no code change:
+
+```bash
+export TYPESAFE_API_KEY=local-key
+export TYPESAFE_BASE_URL=http://localhost:8000
+```
+
+```java
+TypeSafeClient client = TypeSafeClient.fromEnv();
+```
+
 ## Spring Boot starter
 
 ```xml
