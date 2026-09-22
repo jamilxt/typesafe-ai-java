@@ -60,4 +60,33 @@ public final class JdkTransport implements Transport {
             throw new TypeSafeAPIConnectionException("Request interrupted", e);
         }
     }
+
+    @Override
+    public Response getJson(String url, String apiKey, double timeoutSeconds) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofMillis((long) (timeoutSeconds * 1000.0)))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("User-Agent", USER_AGENT)
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> response =
+                    client.send(request, HttpResponse.BodyHandlers.ofString());
+            Map<String, String> headers = new HashMap<>();
+            response.headers().map().forEach((k, v) -> {
+                if (!v.isEmpty()) {
+                    headers.put(k.toLowerCase(), v.get(0));
+                }
+            });
+            return new Response(response.statusCode(), Map.copyOf(headers), response.body());
+        } catch (java.net.http.HttpTimeoutException e) {
+            throw new TypeSafeAPITimeoutException("Request timed out after " + timeoutSeconds + "s", e);
+        } catch (java.io.IOException e) {
+            throw new TypeSafeAPIConnectionException("Request failed: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TypeSafeAPIConnectionException("Request interrupted", e);
+        }
+    }
 }

@@ -1,8 +1,19 @@
 # typesafe-ai-java
 
-Community-maintained Java SDK for the [TypeSafe AI System One (Jev) API](https://docs.typesafe.ai). Not an official TypeSafe product.
+Community-maintained Java SDK for the [TypeSafe AI System One API](https://docs.typesafe.ai). Not an official TypeSafe product.
 
-Jev answers typed questions about a piece of state. Ask whether something is true and you get a probability. Ask it to pick from a list and you get the option plus a distribution over the alternatives. It does not write prose, so nothing here parses sentences. The answers arrive as numbers your code branches on.
+System One models answer typed questions about a piece of state. Ask whether something is true and you get a probability. Ask it to pick from a list and you get the option plus a distribution over the alternatives. They do not write prose, so nothing here parses sentences. The answers arrive as numbers your code branches on.
+
+The SDK speaks the System One wire contract, so it works with every model and endpoint that implements it:
+
+| Backend | What it is | How to point at it |
+|---|---|---|
+| **Jev** (hosted) | TypeSafe's flagship model | default; or `defaultModel("jev-1.13.0")` to pin |
+| **Jev** via Vercel AI Gateway / OpenRouter | hosted, gateway-billed | `baseUrl(...)` + gateway model id |
+| **Laya** self-hosted | 421M-param decision model via [laya-serve](https://pypi.org/project/laya-serve/); runs on a laptop | `TypeSafeClient.laya(url, key)` or `TYPESAFE_BASE_URL` |
+| **OpenJev-compatible servers** | open-weight servers implementing the Jev HTTP API (e.g. openjev-sglang) | `baseUrl(...)`; verified working |
+
+Model discovery is runtime, not hardcoded: `client.listModels()` returns what the connected backend serves.
 
 Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-python) and [JavaScript](https://github.com/typesafe-ai/typesafe-sdk-js). This is the JVM counterpart: a pure-Java core, idiomatic Kotlin extensions, a Spring Boot starter, and an optional Spring AI bridge.
 
@@ -13,15 +24,15 @@ Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-pyt
 | `typesafe-ai-java-core` | Client, typed questions/answers, retries, error hierarchy | Jackson only |
 | `typesafe-ai-java-kotlin` | Idiomatic Kotlin DSL for requests, nullable accessors, confidence helpers | Kotlin stdlib |
 | `typesafe-ai-java-spring-boot-starter` | Auto-configured `TypeSafeClient` bean via `typesafe.*` properties | Spring Boot |
-| `typesafe-ai-java-spring-ai` | Use Jev as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
+| `typesafe-ai-java-spring-ai` | Use any System One model as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
 
-All four are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt). Latest release: **0.2.2** ([release notes](https://github.com/jamilxt/typesafe-ai-java/releases)).
+All four are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt). Latest release: **0.2.3** ([release notes](https://github.com/jamilxt/typesafe-ai-java/releases)).
 
 ```xml
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-core</artifactId>
-  <version>0.2.2</version>
+  <version>0.2.3</version>
 </dependency>
 ```
 
@@ -78,6 +89,21 @@ result.onConfidentChoice("department", minConfidence = 0.5) { dept ->
 
 Behavior mirrors the official SDKs: retries on 408/429/5xx (2 attempts, 0.5s to 5s backoff with jitter, honors `Retry-After`), a 30s total budget per call, and a typed exception hierarchy (`TypeSafeAuthenticationException`, `TypeSafeRateLimitException` with `retryAfterMs()`, ...).
 
+### Choosing a model
+
+Requests default to `jev-latest`. Pin a version for stable thresholds, or name
+any model the connected backend serves (check `client.listModels()`):
+
+```java
+TypeSafeClient client = TypeSafeClient.builder(key)
+    .defaultModel("jev-1.13.0")   // or a Laya / OpenJev model id
+    .build();
+
+// or per request, overriding the client default
+EvaluationRequest.of(state).build();               // uses defaultModel
+EvaluationRequest.of(state).model("jev-latest").build();   // pinned per call
+```
+
 ### Through the Vercel AI Gateway
 
 ```java
@@ -96,14 +122,28 @@ TypeSafeClient client = TypeSafeClient.builder(key)
     .build();
 ```
 
-### Self-hosted Laya (laya-serve)
+### Self-hosted and open backends
 
-[laya-serve](https://pypi.org/project/laya-serve/) runs Laya decision-model weights
-locally and speaks the same Jev wire contract (`POST /v1/systemone`,
-`GET /v1/models`), so the whole SDK works against it unchanged:
+Any server that implements the System One HTTP contract (`POST /v1/systemone`,
+`GET /v1/models`) works without code changes — only the base URL differs.
+Two proven options:
+
+**[laya-serve](https://pypi.org/project/laya-serve/)** runs Laya decision-model
+weights locally (laptop-friendly, 421M params). The fake backend needs no
+weights at all:
 
 ```java
 TypeSafeClient client = TypeSafeClient.laya("http://localhost:8000", "local-key");
+```
+
+**OpenJev-compatible servers** (e.g. [openjev-sglang](https://github.com/ekzhang/openjev-sglang))
+serve open-weight models behind the same contract. The SDK has been verified
+live against a real deployment:
+
+```java
+TypeSafeClient client = TypeSafeClient.builder("no-key-needed")
+    .baseUrl("https://your-openjev-deployment.example")
+    .build();
 ```
 
 Or switch hosted vs self-hosted with an environment variable and no code change:
@@ -123,13 +163,14 @@ TypeSafeClient client = TypeSafeClient.fromEnv();
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-spring-boot-starter</artifactId>
-  <version>0.2.2</version>
+  <version>0.2.3</version>
 </dependency>
 ```
 
 ```yaml
 typesafe:
   api-key: ${TYPESAFE_API_KEY}   # or set the env var; the app also starts fine without a key
+  base-url: http://localhost:8000   # optional: laya-serve / OpenJev / gateway endpoint
   model: jev-latest              # pin e.g. jev-1.13.0 when tuning thresholds
   timeout-seconds: 30
   max-retries: 2
@@ -149,7 +190,7 @@ class TriageService {
 
 Two integrations, both firsts in the Jev ecosystem:
 
-**Prompt guard advisor** - screens every prompt with one Jev call before the chain runs (the official guardrails pattern):
+**Prompt guard advisor** - screens every prompt with one System One call before the chain runs (the official guardrails pattern):
 
 ```java
 ChatClient chatClient = ChatClient.builder(otherChatModel)
@@ -161,7 +202,7 @@ ChatClient chatClient = ChatClient.builder(otherChatModel)
     .build();
 ```
 
-**Jev as a ChatModel** - drop Jev into any pipeline that accepts a `ChatModel`, e.g. to A/B a triage step against an LLM. The last user message is the state; the probability comes back as the generation text and the full typed result via response metadata: `response.getMetadata().get(JevChatModel.RESULT_METADATA_KEY)`.
+**Jev as a ChatModel** - drop any System One backend into a pipeline that accepts a `ChatModel`, e.g. to A/B a triage step against an LLM. The last user message is the state; the probability comes back as the generation text and the full typed result via response metadata: `response.getMetadata().get(JevChatModel.RESULT_METADATA_KEY)`.
 
 ## Build
 
@@ -178,7 +219,7 @@ Live smoke tests against the real API run automatically when `AI_GATEWAY_API_KEY
 - [x] Spring Boot starter with context tests
 - [x] Spring AI bridge: guard advisor + ChatModel adapter
 - [x] Live-tested against the real Jev API (via Vercel AI Gateway)
-- [x] Published to Maven Central (`0.2.2`, all four modules)
+- [x] Published to Maven Central (`0.2.3`, all four modules)
 - [x] CI (GitHub Actions) + release-on-tag publishing
 
 ## License

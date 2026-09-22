@@ -239,6 +239,38 @@ class TypeSafeClientTest {
     }
 
     @Test
+    void listModelsUsesGetMethodWhenTransportSupportsIt() {
+        AtomicInteger getCalls = new AtomicInteger();
+        AtomicInteger postCalls = new AtomicInteger();
+        Transport transport = new Transport() {
+            @Override
+            public Response postJson(String url, String apiKey, String jsonBody, double timeoutSeconds) {
+                postCalls.incrementAndGet();
+                return new Response(405, Map.of(), "{\"error\":\"method not allowed\"}");
+            }
+
+            @Override
+            public Response getJson(String url, String apiKey, double timeoutSeconds) {
+                getCalls.incrementAndGet();
+                assertTrue(url.endsWith("/v1/models"), url);
+                return new Response(200, Map.of(),
+                        "{\"models\":[{\"name\":\"laya-english\",\"description\":\"local\"}]}");
+            }
+        };
+
+        TypeSafeClient client = TypeSafeClient.builder("test-key")
+                .transport(transport)
+                .retryPolicy(RetryPolicy.none())
+                .build();
+
+        java.util.List<ai.typesafe.model.ModelInfo> models = client.listModels();
+        assertEquals(1, getCalls.get());
+        assertEquals(0, postCalls.get());
+        assertEquals("laya-english", models.get(0).id());
+        assertEquals("local", models.get(0).string("description"));
+    }
+
+    @Test
     void optionsAboveOrdersByDescendingProbability() {
         ai.typesafe.model.ChoiceAnswer answer = new ai.typesafe.model.ChoiceAnswer(
                 "choice", "billing",

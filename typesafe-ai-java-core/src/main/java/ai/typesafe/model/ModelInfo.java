@@ -67,11 +67,13 @@ public record ModelInfo(String id, Map<String, Object> metadata) {
                         out.add(ModelInfo.of(entry.asText()));
                     } else if (entry.isObject()) {
                         String id = entry.has("id") ? entry.get("id").asText(null)
+                                : entry.has("name") ? entry.get("name").asText(null)
                                 : entry.has("model") ? entry.get("model").asText(null) : null;
                         if (id != null) {
                             Map<String, Object> meta = MAPPER.convertValue(entry,
                                     new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
                             meta.remove("id");
+                            meta.remove("name");
                             meta.remove("model");
                             out.add(new ModelInfo(id, meta));
                         }

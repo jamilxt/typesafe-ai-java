@@ -165,19 +165,20 @@ public final class TypeSafeClient {
      * @see #listModels() for the typed variant
      */
     public String listModelsRaw() {
-        return executeWithRetries(MODELS_PATH, "{}", response -> {
+        return executeWithRetries(MODELS_PATH, null, response -> {
             if (response.status() >= 400) {
                 throw apiException(response.status(), response.body(), response.headers());
             }
             return response.body();
-        });
+        }, true);
     }
 
     private SystemOneResult executeWithRetries(String body) {
-        return executeWithRetries(EVALUATE_PATH, body, this::handleResponse);
+        return executeWithRetries(EVALUATE_PATH, body, this::handleResponse, false);
     }
 
-    private <T> T executeWithRetries(String path, String body, java.util.function.Function<Transport.Response, T> parse) {
+    private <T> T executeWithRetries(String path, String body,
+            java.util.function.Function<Transport.Response, T> parse, boolean useGet) {
         long deadline = retryPolicy.totalBudgetSeconds() == null
                 ? Long.MAX_VALUE
                 : System.nanoTime() + (long) (retryPolicy.totalBudgetSeconds() * 1_000_000_000L);
@@ -185,8 +186,9 @@ public final class TypeSafeClient {
         while (true) {
             attempt++;
             try {
-                Transport.Response response =
-                        transport.postJson(baseUrl + path, apiKey.get(), body, timeoutSeconds);
+                Transport.Response response = useGet
+                        ? transport.getJson(baseUrl + path, apiKey.get(), timeoutSeconds)
+                        : transport.postJson(baseUrl + path, apiKey.get(), body, timeoutSeconds);
                 return parse.apply(response);
             } catch (TypeSafeAPIConnectionException | TypeSafeAPIException e) {
                 Long retryAfterMs = null;

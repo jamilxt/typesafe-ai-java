@@ -24,4 +24,20 @@ public interface Transport {
      * @throws ai.typesafe.exception.TypeSafeAPIConnectionException on connect/read failure
      */
     Response postJson(String url, String apiKey, String jsonBody, double timeoutSeconds);
+
+    /**
+     * Executes a GET with Bearer auth. Used for {@code GET /v1/models};
+     * the default delegates to {@link #postJson} for custom transports that
+     * predate the GET method.
+     *
+     * @param url          absolute endpoint URL
+     * @param apiKey       bearer token
+     * @param timeoutSeconds per-call timeout in seconds
+     * @return the response
+     * @throws ai.typesafe.exception.TypeSafeAPITimeoutException on timeout
+     * @throws ai.typesafe.exception.TypeSafeAPIConnectionException on connect/read failure
+     */
+    default Response getJson(String url, String apiKey, double timeoutSeconds) {
+        return postJson(url, apiKey, "{}", timeoutSeconds);
+    }
 }
