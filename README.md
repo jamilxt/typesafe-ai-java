@@ -15,13 +15,13 @@ Official SDKs exist for [Python](https://github.com/typesafe-ai/typesafe-sdk-pyt
 | `typesafe-ai-java-spring-boot-starter` | Auto-configured `TypeSafeClient` bean via `typesafe.*` properties | Spring Boot |
 | `typesafe-ai-java-spring-ai` | Use Jev as a Spring AI `ChatModel`, or as a prompt-guard `CallAdvisor` | Spring AI 1.0.x |
 
-All four are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt). Latest release: **0.2.0** ([release notes](https://github.com/jamilxt/typesafe-ai-java/releases)).
+All four are published to [Maven Central](https://central.sonatype.com/namespace/com.jamilxt). Latest release: **0.2.1** ([release notes](https://github.com/jamilxt/typesafe-ai-java/releases)).
 
 ```xml
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-core</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
 </dependency>
 ```
 
@@ -102,7 +102,7 @@ TypeSafeClient client = TypeSafeClient.builder(key)
 <dependency>
   <groupId>com.jamilxt</groupId>
   <artifactId>typesafe-ai-java-spring-boot-starter</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
 </dependency>
 ```
 
@@ -157,7 +157,7 @@ Live smoke tests against the real API run automatically when `AI_GATEWAY_API_KEY
 - [x] Spring Boot starter with context tests
 - [x] Spring AI bridge: guard advisor + ChatModel adapter
 - [x] Live-tested against the real Jev API (via Vercel AI Gateway)
-- [x] Published to Maven Central (`0.2.0`, all four modules)
+- [x] Published to Maven Central (`0.2.1`, all four modules)
 - [x] CI (GitHub Actions) + release-on-tag publishing
 
 ## License
